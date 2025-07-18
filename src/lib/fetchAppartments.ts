@@ -4,7 +4,7 @@ import { adminDb } from "./firebase/admin";
 const redis = Redis.fromEnv();
 
 export async function fetchApartments() {
-  const cached = await redis.get("aparments:all");
+  const cached = await redis.get("apartments:all");
   if (cached) return JSON.parse(cached as string);
 
   const snapshot = await adminDb.collection("apartments").get();

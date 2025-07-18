@@ -1,4 +1,3 @@
-// lib/cache/manager.ts
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
@@ -13,6 +12,14 @@ const cacheManager = {
   async get<T>(key: string): Promise<T | null> {
     return await redis.get<T>(key);
   },
+async getOrSet<T>(key: string, fetchFn: () => Promise<T>): Promise<T> {
+  const cached = await this.get<T>(key);
+  if (cached !== null && cached !== undefined) return cached;
+
+  const fresh = await fetchFn();
+  await this.set(key, fresh);
+  return fresh;
+},
 
   /**
    * Установить значение в кэш
