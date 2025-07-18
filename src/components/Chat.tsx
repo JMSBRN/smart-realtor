@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { steps } from "@/lib/steps";
-import Link from "next/link";
 
 type Answers = Record<string, string>;
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import cacheManager from "@/lib/cache/manager";
-import { fetchApartments } from "@/lib/fetchApartments";
+import { fetchApartments } from "@/lib/fetchAppartments";
 
 export async function GET() {
   try {

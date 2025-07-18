@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from "next";
-import { fetchApartments } from "@/lib/fetchApartments";
+import { fetchApartments } from "@/lib/fetchAppartments";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await  fetchApartments();
