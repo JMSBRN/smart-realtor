@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import ContactForm from "./ContactForm";
+import { Lead } from "@/types/lead";
 
 interface ChatStep {
   id: string;
@@ -11,7 +12,7 @@ interface ChatStep {
 
 type Answers = Record<string, string>;
 
-const LOCAL_STORAGE_STEPS_KEY = "chatbot_steps_cache_v4"; // Updated cache key
+const LOCAL_STORAGE_STEPS_KEY = "chatbot_steps_cache_v4";
 
 export default function ChatBot() {
   const [stepIndex, setStepIndex] = useState(0);
@@ -20,32 +21,28 @@ export default function ChatBot() {
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [buttonClicked, setButtonClicked] = useState(false);
   const [steps, setSteps] = useState<ChatStep[]>([]);
-  const [regionCityMap, setRegionCityMap] = useState<Record<string, string[]>>({}); // New state for region-city map
-  const [isLoadingSteps, setIsLoadingSteps] = useState(true);
+  const [regionCityMap, setRegionCityMap] = useState<Record<string, string[]>>(
+    {}
+  );
   const [errorLoadingSteps, setErrorLoadingSteps] = useState(false);
 
   useEffect(() => {
     async function loadChatSteps() {
       try {
-        // 1. Try to load from localStorage first
         const cachedData = localStorage.getItem(LOCAL_STORAGE_STEPS_KEY);
         if (cachedData) {
           const parsedData = JSON.parse(cachedData);
           setSteps(parsedData.steps);
           setRegionCityMap(parsedData.regionCityMap);
-          setIsLoadingSteps(false); // No loading state needed if from cache
           return;
         }
 
-        // 2. If not in localStorage, fetch from API
         const res = await fetch("/api/options");
-        if (!res.ok) {
-          throw new Error("Failed to fetch chat options");
-        }
-        const { data } = await res.json(); // API now returns { optionsMap, regionCityMap }
+        if (!res.ok) throw new Error("Failed to fetch chat options");
+
+        const { data } = await res.json();
         const { optionsMap, regionCityMap: fetchedRegionCityMap } = data;
 
-        // Construct steps using optionsMap
         const generatedSteps: ChatStep[] = [
           {
             id: "goal",
@@ -60,7 +57,7 @@ export default function ChatBot() {
           {
             id: "city",
             question: "Какой город интересует?",
-            options: null, // This will be dynamically determined based on selected region
+            options: null,
           },
           {
             id: "budget",
@@ -80,7 +77,11 @@ export default function ChatBot() {
           {
             id: "mortgage",
             question: "Были ли вы в банке?",
-            options: ["Да, одобрили ипотеку", "Планирую пойти", "Нет, без ипотеки"],
+            options: [
+              "Да, одобрили ипотеку",
+              "Планирую пойти",
+              "Нет, без ипотеки",
+            ],
           },
           {
             id: "contact_details",
@@ -88,45 +89,46 @@ export default function ChatBot() {
             options: null,
           },
         ];
+
         setSteps(generatedSteps);
         setRegionCityMap(fetchedRegionCityMap);
 
-        localStorage.setItem(LOCAL_STORAGE_STEPS_KEY, JSON.stringify({
-          steps: generatedSteps,
-          regionCityMap: fetchedRegionCityMap,
-        }));
+        localStorage.setItem(
+          LOCAL_STORAGE_STEPS_KEY,
+          JSON.stringify({
+            steps: generatedSteps,
+            regionCityMap: fetchedRegionCityMap,
+          })
+        );
       } catch (error) {
         console.error("Error loading chat steps:", error);
         setErrorLoadingSteps(true);
-      } finally {
-        setIsLoadingSteps(false);
       }
     }
+
     loadChatSteps();
   }, []);
 
   const current = steps[stepIndex];
-  const isLast = stepIndex === steps.length - 1;
 
-  // Function to get dynamic city options based on selected region
   const getCityOptions = () => {
     const selectedRegion = answers.region;
     if (selectedRegion && regionCityMap[selectedRegion]) {
       return regionCityMap[selectedRegion];
     }
-    return []; // Return empty array if no region selected or no cities for that region
+    return [];
   };
 
   const handleAdvanceStep = async (newAnswersPart: Record<string, string>) => {
     const newAnswers = { ...answers, ...newAnswersPart };
-    setAnswers(newAnswers);
 
-    // If current step is 'region' and it's answered, reset 'city' answer for new region selection
-    if (current.id === "region" && newAnswersPart.region !== answers.region) {
-      newAnswers.city = undefined; // Clear previously selected city
+    if (current?.id === "region" && newAnswersPart.region !== answers.region) {
+      newAnswers.city = "";
     }
 
-    if (stepIndex === steps.length - 1) {
+    setAnswers(newAnswers);
+
+    if (current?.id === "contact_details") {
       try {
         const res = await fetch("/api/leads", {
           method: "POST",
@@ -143,19 +145,19 @@ export default function ChatBot() {
         console.error("Ошибка отправки:", err);
         alert("Произошла ошибка.");
       }
-    } else {
-      setStepIndex(stepIndex + 1);
+      return;
     }
+
+    setStepIndex(stepIndex + 1);
   };
 
   const handleBack = () => {
     if (stepIndex > 0) {
       setStepIndex(stepIndex - 1);
-      // When going back from city, clear the city answer if a different region was previously selected
-      if (steps[stepIndex].id === "city") {
-        setAnswers(prev => {
+      if (steps[stepIndex]?.id === "city") {
+        setAnswers((prev) => {
           const newAnswers = { ...prev };
-          delete newAnswers.city; 
+          delete newAnswers.city;
           return newAnswers;
         });
       }
@@ -168,25 +170,15 @@ export default function ChatBot() {
     setIsDone(false);
     setIsLoadingResults(false);
     setButtonClicked(false);
-    // No need to re-fetch from API here, localStorage will handle it on next full page load or if cache is cleared
   };
 
   const handleShowResultsClick = () => {
     setButtonClicked(true);
     setIsLoadingResults(true);
-
     setTimeout(() => {
       window.location.href = "/results";
     }, 1500);
   };
-
-  if (isLoadingSteps) {
-    return (
-      <div className="p-4 max-w-xl mx-auto text-center border rounded-2xl shadow-md bg-white space-y-4">
-        <p>Загрузка данных чат-бота...</p>
-      </div>
-    );
-  }
 
   if (errorLoadingSteps) {
     return (
@@ -201,30 +193,43 @@ export default function ChatBot() {
     );
   }
 
-  if (!current) {
+  if (isDone) {
     return (
       <div className="p-4 max-w-xl mx-auto text-center border rounded-2xl shadow-md bg-white space-y-4">
-        <p className="text-red-600">
-          Ошибка: Шаги чат-бота не загружены или пусты.
+        <p className="text-green-600 text-lg font-semibold">
+          Спасибо! Мы свяжемся с вами в ближайшее время.
         </p>
-        <button onClick={handleRestart} className="text-gray-600 underline">
+        <button onClick={handleRestart} className="text-blue-600 underline">
           Начать заново
+        </button>
+        <button
+          onClick={handleShowResultsClick}
+          className="ml-20 text-blue-600 underline"
+        >
+          Показать результаты
         </button>
       </div>
     );
   }
 
-  const optionsToRender = current.id === "city" ? getCityOptions() : current.options;
+  if (!current) {
+    return null;
+  }
+
+  const optionsToRender =
+    current.id === "city" ? getCityOptions() : current.options;
 
   return (
     <div className="p-4 max-w-xl mx-auto space-y-4 border rounded-2xl shadow-md bg-white">
-      <h2 className="text-lg font-semibold text-gray-900">{current.question}</h2>
+      <h2 className="text-lg font-semibold text-gray-900">
+        {current.question}
+      </h2>
 
       {current.id === "contact_details" ? (
         <ContactForm
           onSubmit={(data) => handleAdvanceStep(data)}
           initialData={{
-            contacts: answers.contacts,
+            phone_number: answers.contacts,
             email: answers.email,
             messenger: answers.messenger,
           }}
@@ -241,9 +246,9 @@ export default function ChatBot() {
             </button>
           ))}
         </div>
-      ) : (current.id === "city" && optionsToRender && optionsToRender.length === 0) ? (
+      ) : current.id === "city" ? (
         <p className="text-gray-600">Нет городов для выбранного региона.</p>
-      ) : null /* Fallback for other non-option steps if needed */}
+      ) : null}
 
       {stepIndex > 0 && (
         <button

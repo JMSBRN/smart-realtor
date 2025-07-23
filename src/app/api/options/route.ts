@@ -24,7 +24,7 @@ export async function GET() {
       apartments = cachedApartments as Apartment[];
     } else {
       const snapshot = await adminDb.collection("apartments").get();
-      apartments = snapshot.docs.map(doc => ({
+      apartments = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as Apartment[];
@@ -34,12 +34,12 @@ export async function GET() {
         await cacheManager.set(apartmentsCacheKey, apartments, 60 * 60 * 24);
       }
     }
-    
+
     // Generate steps (which include general options like goal, budget, rooms)
     const steps = generateSteps(apartments);
 
     const optionsMap: Record<string, string[] | null> = {};
-    steps.forEach(step => {
+    steps.forEach((step) => {
       optionsMap[step.id] = step.options;
     });
 
@@ -50,7 +50,7 @@ export async function GET() {
 
     // Generate region-city map
     const regionCityMap: Record<string, string[]> = {};
-    apartments.forEach(apartment => {
+    apartments.forEach((apartment) => {
       if (apartment.region && apartment.settlement) {
         if (!regionCityMap[apartment.region]) {
           regionCityMap[apartment.region] = [];
@@ -77,6 +77,22 @@ export async function GET() {
     if (error instanceof Error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
-    return NextResponse.json({ error: "An unknown error occurred" }, { status: 500 });
+    return NextResponse.json(
+      { error: "An unknown error occurred" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE() {
+  try {
+    await cacheManager.del("chatbot:options_v4");
+    return NextResponse.json({ success: true, message: "Кэш успешно удалён." });
+  } catch (error) {
+    console.error("Ошибка при удалении кэша:", error);
+    return NextResponse.json(
+      { success: false, error: "Ошибка при удалении кэша." },
+      { status: 500 }
+    );
   }
 }

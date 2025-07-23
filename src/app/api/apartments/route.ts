@@ -18,7 +18,7 @@ export async function GET() {
     // 2. Получение из Firebase
     const snapshot = await adminDb.collection("apartments").get();
 
-    const apartments = snapshot.docs.map(doc => ({
+    const apartments = snapshot.docs.map((doc) => ({
       id: doc.id,
       ...doc.data(),
     }));
@@ -29,7 +29,19 @@ export async function GET() {
     return NextResponse.json({ from: "firebase", data: apartments });
   } catch (error) {
     if (error instanceof Error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+  }
 }
+export async function DELETE() {
+  try {
+    await cacheManager.del("chatbot:options_v4");
+    return NextResponse.json({ success: true, message: "Кэш успешно удалён." });
+  } catch (error) {
+    console.error("Ошибка при удалении кэша:", error);
+    return NextResponse.json(
+      { success: false, error: "Ошибка при удалении кэша." },
+      { status: 500 }
+    );
   }
 }

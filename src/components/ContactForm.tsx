@@ -1,22 +1,23 @@
 import { useState } from "react";
-import {
-  TextField,
-  Button,
-  Box,
-  Typography,
-  FormHelperText,
-} from "@mui/material";
+import { TextField, Button, Box } from "@mui/material";
 
 interface ContactFormProps {
-  onSubmit: (data: { contacts: string; email: string; messenger: string }) => void;
-  initialData?: { contacts?: string; email?: string; messenger?: string };
+  onSubmit: (data: {
+    phone_number: string;
+    email: string;
+    messenger: string;
+  }) => void;
+  initialData?: { phone_number?: string; email?: string; messenger?: string };
 }
 
 const phoneRegex = /^\+375\d{9}$/;
 const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
 
-export default function ContactForm({ onSubmit, initialData }: ContactFormProps) {
-  const [phone, setPhone] = useState(initialData?.contacts || "");
+export default function ContactForm({
+  onSubmit,
+  initialData,
+}: ContactFormProps) {
+  const [phone, setPhone] = useState(initialData?.phone_number || "");
   const [email, setEmail] = useState(initialData?.email || "");
   const [messenger, setMessenger] = useState(initialData?.messenger || "");
 
@@ -26,12 +27,14 @@ export default function ContactForm({ onSubmit, initialData }: ContactFormProps)
 
   const validatePhone = (value: string) => {
     if (!value.trim()) return "Поле телефона обязательно для заполнения.";
-    if (!phoneRegex.test(value.trim())) return "Введите номер в формате +375XXXXXXXXX.";
+    if (!phoneRegex.test(value.trim()))
+      return "Введите номер в формате +375XXXXXXXXX.";
     return null;
   };
 
   const validateEmail = (value: string) => {
-    if (value.trim() && !emailRegex.test(value.trim())) return "Введите корректный email.";
+    if (value.trim() && !emailRegex.test(value.trim()))
+      return "Введите корректный email.";
     return null;
   };
 
@@ -51,7 +54,7 @@ export default function ContactForm({ onSubmit, initialData }: ContactFormProps)
     if (phoneValidation || emailValidation || messengerValidation) return;
 
     onSubmit({
-      contacts: phone.trim(),
+      phone_number: phone.trim(),
       email: email.trim(),
       messenger: messenger.trim(),
     });
@@ -109,7 +112,9 @@ export default function ContactForm({ onSubmit, initialData }: ContactFormProps)
         variant="contained"
         color="primary"
         onClick={handleSubmit}
-        disabled={!phone.trim() || !!phoneError || !!emailError || !!messengerError}
+        disabled={
+          !phone.trim() || !!phoneError || !!emailError || !!messengerError
+        }
       >
         Продолжить
       </Button>
