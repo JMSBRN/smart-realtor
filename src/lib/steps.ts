@@ -35,7 +35,7 @@ export function generateSteps(apartments: Apartment[]) {
     {
       id: "city",
       question: "Какой город интересует?",
-      options: getUniqueOptions(apartments, "settlement"),
+      options: null, // Set to null as cities will be dynamically filtered on the client
     },
     {
       id: "budget",

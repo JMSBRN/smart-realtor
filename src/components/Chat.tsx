@@ -11,7 +11,7 @@ interface ChatStep {
 
 type Answers = Record<string, string>;
 
-const LOCAL_STORAGE_STEPS_KEY = "chatbot_steps_cache";
+const LOCAL_STORAGE_STEPS_KEY = "chatbot_steps_cache_v4"; // Updated cache key
 
 export default function ChatBot() {
   const [stepIndex, setStepIndex] = useState(0);
@@ -20,6 +20,7 @@ export default function ChatBot() {
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [buttonClicked, setButtonClicked] = useState(false);
   const [steps, setSteps] = useState<ChatStep[]>([]);
+  const [regionCityMap, setRegionCityMap] = useState<Record<string, string[]>>({}); // New state for region-city map
   const [isLoadingSteps, setIsLoadingSteps] = useState(true);
   const [errorLoadingSteps, setErrorLoadingSteps] = useState(false);
 
@@ -27,9 +28,11 @@ export default function ChatBot() {
     async function loadChatSteps() {
       try {
         // 1. Try to load from localStorage first
-        const cachedSteps = localStorage.getItem(LOCAL_STORAGE_STEPS_KEY);
-        if (cachedSteps) {
-          setSteps(JSON.parse(cachedSteps));
+        const cachedData = localStorage.getItem(LOCAL_STORAGE_STEPS_KEY);
+        if (cachedData) {
+          const parsedData = JSON.parse(cachedData);
+          setSteps(parsedData.steps);
+          setRegionCityMap(parsedData.regionCityMap);
           setIsLoadingSteps(false); // No loading state needed if from cache
           return;
         }
@@ -39,8 +42,10 @@ export default function ChatBot() {
         if (!res.ok) {
           throw new Error("Failed to fetch chat options");
         }
-        const { data: optionsMap } = await res.json();
+        const { data } = await res.json(); // API now returns { optionsMap, regionCityMap }
+        const { optionsMap, regionCityMap: fetchedRegionCityMap } = data;
 
+        // Construct steps using optionsMap
         const generatedSteps: ChatStep[] = [
           {
             id: "goal",
@@ -55,7 +60,7 @@ export default function ChatBot() {
           {
             id: "city",
             question: "Какой город интересует?",
-            options: optionsMap.city || [],
+            options: null, // This will be dynamically determined based on selected region
           },
           {
             id: "budget",
@@ -84,7 +89,12 @@ export default function ChatBot() {
           },
         ];
         setSteps(generatedSteps);
-        localStorage.setItem(LOCAL_STORAGE_STEPS_KEY, JSON.stringify(generatedSteps));
+        setRegionCityMap(fetchedRegionCityMap);
+
+        localStorage.setItem(LOCAL_STORAGE_STEPS_KEY, JSON.stringify({
+          steps: generatedSteps,
+          regionCityMap: fetchedRegionCityMap,
+        }));
       } catch (error) {
         console.error("Error loading chat steps:", error);
         setErrorLoadingSteps(true);
@@ -98,9 +108,23 @@ export default function ChatBot() {
   const current = steps[stepIndex];
   const isLast = stepIndex === steps.length - 1;
 
+  // Function to get dynamic city options based on selected region
+  const getCityOptions = () => {
+    const selectedRegion = answers.region;
+    if (selectedRegion && regionCityMap[selectedRegion]) {
+      return regionCityMap[selectedRegion];
+    }
+    return []; // Return empty array if no region selected or no cities for that region
+  };
+
   const handleAdvanceStep = async (newAnswersPart: Record<string, string>) => {
     const newAnswers = { ...answers, ...newAnswersPart };
     setAnswers(newAnswers);
+
+    // If current step is 'region' and it's answered, reset 'city' answer for new region selection
+    if (current.id === "region" && newAnswersPart.region !== answers.region) {
+      newAnswers.city = undefined; // Clear previously selected city
+    }
 
     if (stepIndex === steps.length - 1) {
       try {
@@ -127,6 +151,14 @@ export default function ChatBot() {
   const handleBack = () => {
     if (stepIndex > 0) {
       setStepIndex(stepIndex - 1);
+      // When going back from city, clear the city answer if a different region was previously selected
+      if (steps[stepIndex].id === "city") {
+        setAnswers(prev => {
+          const newAnswers = { ...prev };
+          delete newAnswers.city; 
+          return newAnswers;
+        });
+      }
     }
   };
 
@@ -182,54 +214,7 @@ export default function ChatBot() {
     );
   }
 
-  if (isDone) {
-    return (
-      <div className="p-4 max-w-xl mx-auto text-center border rounded-2xl shadow-md bg-white space-y-4">
-        <h2 className="text-lg font-semibold text-green-600">
-          Спасибо! Мы свяжемся с вами в ближайшее время.
-        </h2>
-
-        <button
-          onClick={handleShowResultsClick}
-          disabled={buttonClicked}
-          className={`inline-block px-6 py-3 rounded-full text-white transition ${
-            buttonClicked
-              ? "bg-gray-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
-        >
-          {isLoadingResults ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg
-                className="animate-spin h-5 w-5 text-white"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-                ></path>
-              </svg>
-              Загрузка...
-            </span>
-          ) : (
-            "Показать подходящие квартиры"
-          )}
-        </button>
-
-      </div>
-    );
-  }
+  const optionsToRender = current.id === "city" ? getCityOptions() : current.options;
 
   return (
     <div className="p-4 max-w-xl mx-auto space-y-4 border rounded-2xl shadow-md bg-white">
@@ -244,9 +229,9 @@ export default function ChatBot() {
             messenger: answers.messenger,
           }}
         />
-      ) : current.options ? (
+      ) : optionsToRender && optionsToRender.length > 0 ? (
         <div className="flex flex-wrap gap-2">
-          {current.options.map((opt) => (
+          {optionsToRender.map((opt) => (
             <button
               key={opt}
               className="px-4 py-2 bg-blue-500 text-white rounded-full hover:bg-blue-600"
@@ -256,7 +241,9 @@ export default function ChatBot() {
             </button>
           ))}
         </div>
-      ) : null /* Should not happen with defined steps */}
+      ) : (current.id === "city" && optionsToRender && optionsToRender.length === 0) ? (
+        <p className="text-gray-600">Нет городов для выбранного региона.</p>
+      ) : null /* Fallback for other non-option steps if needed */}
 
       {stepIndex > 0 && (
         <button

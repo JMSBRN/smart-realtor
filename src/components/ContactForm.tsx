@@ -1,13 +1,18 @@
 import { useState } from "react";
+import {
+  TextField,
+  Button,
+  Box,
+  Typography,
+  FormHelperText,
+} from "@mui/material";
 
 interface ContactFormProps {
   onSubmit: (data: { contacts: string; email: string; messenger: string }) => void;
   initialData?: { contacts?: string; email?: string; messenger?: string };
 }
 
-// Регулярка для белорусского номера в формате +375XXXXXXXXX
 const phoneRegex = /^\+375\d{9}$/;
-// Регулярка для простой проверки email
 const emailRegex = /^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$/;
 
 export default function ContactForm({ onSubmit, initialData }: ContactFormProps) {
@@ -20,43 +25,30 @@ export default function ContactForm({ onSubmit, initialData }: ContactFormProps)
   const [messengerError, setMessengerError] = useState<string | null>(null);
 
   const validatePhone = (value: string) => {
-    if (!value.trim()) {
-      return "Поле телефона обязательно для заполнения.";
-    }
-    if (!phoneRegex.test(value.trim())) {
-      return "Пожалуйста, введите корректный номер телефона в формате +375XXXXXXXXX.";
-    }
+    if (!value.trim()) return "Поле телефона обязательно для заполнения.";
+    if (!phoneRegex.test(value.trim())) return "Введите номер в формате +375XXXXXXXXX.";
     return null;
   };
 
   const validateEmail = (value: string) => {
-    if (value.trim() && !emailRegex.test(value.trim())) {
-      return "Пожалуйста, введите корректный адрес электронной почты.";
-    }
+    if (value.trim() && !emailRegex.test(value.trim())) return "Введите корректный email.";
     return null;
   };
 
   const validateMessenger = (value: string) => {
-    // Messenger is not strictly required, but if something is typed, it should be trimmed
-    if (value.trim() === "") {
-      return null; // No error if empty, as it's optional
-    }
-    return null; // No specific format validation for messenger for now
+    return null; // опционально, не проверяем
   };
 
   const handleSubmit = () => {
-    // Perform final validation before submitting
-    const phoneValidationResult = validatePhone(phone);
-    const emailValidationResult = validateEmail(email);
-    const messengerValidationResult = validateMessenger(messenger);
+    const phoneValidation = validatePhone(phone);
+    const emailValidation = validateEmail(email);
+    const messengerValidation = validateMessenger(messenger);
 
-    setPhoneError(phoneValidationResult);
-    setEmailError(emailValidationResult);
-    setMessengerError(messengerValidationResult);
+    setPhoneError(phoneValidation);
+    setEmailError(emailValidation);
+    setMessengerError(messengerValidation);
 
-    if (phoneValidationResult || emailValidationResult || messengerValidationResult) {
-      return; // Stop if there are validation errors
-    }
+    if (phoneValidation || emailValidation || messengerValidation) return;
 
     onSubmit({
       contacts: phone.trim(),
@@ -66,76 +58,61 @@ export default function ContactForm({ onSubmit, initialData }: ContactFormProps)
   };
 
   return (
-    <div className="space-y-4">
-      {/* Phone Input */}
-      <div>
-        <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-          Оставьте, пожалуйста, ваш номер телефона: <span className="text-red-500">*</span>
-        </label>
-        <input
-          type="tel"
-          id="phone"
-          value={phone}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            setPhone(newValue);
-            setPhoneError(validatePhone(newValue)); // Validate immediately
-          }}
-          placeholder="+375XXXXXXXXX"
-          className={`border p-2 rounded w-full transition placeholder-black text-black ${phoneError ? "border-red-500" : "border-gray-300"}`}
-        />
-        {phoneError && <p className="text-red-600 text-sm mt-1">{phoneError}</p>}
-      </div>
+    <Box display="flex" flexDirection="column" gap={3}>
+      {/* Phone Field */}
+      <TextField
+        label="Номер телефона *"
+        variant="outlined"
+        fullWidth
+        value={phone}
+        onChange={(e) => {
+          const val = e.target.value;
+          setPhone(val);
+          setPhoneError(validatePhone(val));
+        }}
+        error={!!phoneError}
+        helperText={phoneError || "Введите номер в формате +375XXXXXXXXX"}
+      />
 
-      {/* Email Input */}
-      <div>
-        <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-          Пожалуйста, оставьте ваш email:
-        </label>
-        <input
-          type="email"
-          id="email"
-          value={email}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            setEmail(newValue);
-            setEmailError(validateEmail(newValue)); // Validate immediately
-          }}
-          placeholder="your@example.com"
-          className={`border p-2 rounded w-full transition placeholder-black text-black ${emailError ? "border-red-500" : "border-gray-300"}`}
-        />
-        {emailError && <p className="text-red-600 text-sm mt-1">{emailError}</p>}
-      </div>
+      {/* Email Field */}
+      <TextField
+        label="Email"
+        variant="outlined"
+        fullWidth
+        value={email}
+        onChange={(e) => {
+          const val = e.target.value;
+          setEmail(val);
+          setEmailError(validateEmail(val));
+        }}
+        error={!!emailError}
+        helperText={emailError || "example@email.com"}
+      />
 
-      {/* Messenger Input */}
-      <div>
-        <label htmlFor="messenger" className="block text-sm font-medium text-gray-700 mb-1">
-          Напишите удобный для вас мессенджер (Telegram, Viber, WhatsApp) или ваш ник:
-        </label>
-        <input
-          type="text"
-          id="messenger"
-          value={messenger}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            setMessenger(newValue);
-            setMessengerError(validateMessenger(newValue)); // Validate immediately
-          }}
-          placeholder="Telegram, @your_nick"
-          className={`border p-2 rounded w-full transition placeholder-black text-black ${messengerError ? "border-red-500" : "border-gray-300"}`}
-        />
-        {messengerError && <p className="text-red-600 text-sm mt-1">{messengerError}</p>}
-      </div>
+      {/* Messenger Field */}
+      <TextField
+        label="Удобный мессенджер или ник (Telegram, Viber, WhatsApp)"
+        variant="outlined"
+        fullWidth
+        value={messenger}
+        onChange={(e) => {
+          const val = e.target.value;
+          setMessenger(val);
+          setMessengerError(validateMessenger(val));
+        }}
+        error={!!messengerError}
+        helperText={messengerError || "Например: @your_nick"}
+      />
 
-      <button
+      {/* Submit Button */}
+      <Button
+        variant="contained"
+        color="primary"
         onClick={handleSubmit}
-        className={`w-full py-2 text-white rounded transition ${
-          (phone.trim() && !phoneError && !emailError && !messengerError) ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"
-        }`}
         disabled={!phone.trim() || !!phoneError || !!emailError || !!messengerError}
       >
         Продолжить
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }
