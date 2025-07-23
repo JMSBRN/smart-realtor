@@ -140,12 +140,10 @@ export default function ChatBot() {
         {inputError && showRestart && (
           <div>
             <p className="text-red-600 mb-2">
-              Пожалуйста, введите корректный номер телефона в формате +375XXXXXXXXX
+              Пожалуйста, введите корректный номер телефона в формате
+              +375XXXXXXXXX
             </p>
-            <button
-              onClick={handleRestart}
-              className="text-gray-600 underline"
-            >
+            <button onClick={handleRestart} className="text-gray-600 underline">
               Вернуться на начало поиска
             </button>
           </div>
@@ -156,7 +154,7 @@ export default function ChatBot() {
 
   return (
     <div className="p-4 max-w-xl mx-auto space-y-4 border rounded-2xl shadow-md bg-white">
-      <h2 className="text-lg font-semibold">{current.question}</h2>
+      <h2 className="text-lg text-black font-semibold">{current.question}</h2>
 
       {current.options ? (
         <div className="flex flex-wrap gap-2">
@@ -171,7 +169,7 @@ export default function ChatBot() {
           ))}
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-2 text-gray-900">
           <input
             type="tel"
             value={inputValue}
